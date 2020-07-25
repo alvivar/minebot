@@ -1,0 +1,2 @@
+# minebot
+Minecraft Bot.
