@@ -1,2 +1,2 @@
 # minebot
-Minecraft Bot.
+Minecraft Bot in Rust.
