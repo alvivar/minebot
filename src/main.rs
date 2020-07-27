@@ -1,41 +1,75 @@
-
-use std::fs;
 use std::process::Command;
-use regex::Regex;
 
 fn main() {
-    println!("This is happening, right?");
-
-    let paths = fs::read_dir("./data/logs").unwrap();
-
-    for path in paths {
-        println!("Name: {}", path.unwrap().path().display())
-    }
-
     // Reading the log
 
-    // let data = fs::read_to_string("/c/adros/code/soft-thunder/minecraft/data/logs/latest.log").expect("Unable to read file");
-    let data = fs::read_to_string("./data/logs/latest.log").expect("Unable to read file");
-    let files: Vec<&str> = data.split("\n").collect();
+    let log_command =
+        Command::new("docker")
+                .args(&["logs", "--tail", "100", "mc"])
+                .output()
+                .expect("docker logs failed");
 
-    let len = files.len();
-    let last_index = 10;
-    let tail = len - last_index;
+    let log = String::from_utf8(log_command.stdout).unwrap();
+    let lines: Vec<&str> = log.split("\n").collect();
 
-    for i in tail..len {
-        println!("{}", files[i]);
+    for line in lines.into_iter() {
+        let len = line.len();
+        let start_bytes = line.find('<').unwrap_or(0);
+        let end_bytes = line.find('>').unwrap_or(0);
+
+        let username_sliced = &line[start_bytes..end_bytes];
+        let username: String = username_sliced.chars().skip(1).collect();
+
+        let line_sliced = &line[end_bytes..len];
+        let line_content: String = line_sliced.chars().skip(2).collect();
+
+        if end_bytes > start_bytes {
+            println!("Username: {}", username);
+            println!("Command: {}", line_content);
+        }
+
+        if line_content.starts_with("thunder to ")
+        {
+            let coords = line_content.replace("thunder to ", "");
+            println!("{}", coords);
+
+            let mut tpcoords: Vec<&str> = coords.trim().split(" ").collect();
+            let mut tpcommand = format!("tp {} {}", username, coords.trim());
+            println!("{}", tpcommand);
+
+            if tpcoords.len() == 3 {
+                let rcon_command =
+                    Command::new("docker")
+                        .args(&["exec", "-i"])
+                        .args(&["mc", "rcon-cli"])
+                        .arg(&tpcommand)
+                        .status()
+                        .expect("Failed to execute process");
+            }
+        }
+
+        if line_content.starts_with("please thunder a golden apple!")
+        {
+            let rcon_command =
+                Command::new("docker")
+                    .args(&["exec", "-i"])
+                    .args(&["mc", "rcon-cli"])
+                    .args(&["give", "adronomicon", "golden_apple"])
+                    .status()
+                    .expect("Failed to execute process");
+        }
     }
 
-    // Commands
+    // Commands as reactions to the log
 
-    let output =
-        Command::new("docker")
-                // .args(&["ps", "-a"])
-                .args(&["exec", "-i"])
-                .args(&["mc", "rcon-cli"])
-                .args(&["give", "adronomicon", "golden_apple"])
-                .status()
-                .expect("Failed to execute process");
+    // let rcon_command =
+    //     Command::new("docker")
+    //             // .args(&["ps", "-a"])
+    //             .args(&["exec", "-i"])
+    //             .args(&["mc", "rcon-cli"])
+    //             .args(&["give", "adronomicon", "golden_apple"])
+    //             .status()
+    //             .expect("Failed to execute process");
 
-    println!("Result: {}", output);
+    // println!("Result: {}", rcon_command);
 }
